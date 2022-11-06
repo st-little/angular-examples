@@ -1,8 +1,8 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Observable, of } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
+import { Observable, of, Subject } from 'rxjs';
+import { catchError, concatMap, map, tap } from 'rxjs/operators';
 
 export interface User {
   name: string;
@@ -15,9 +15,21 @@ export interface PostUserQueue {
 
 @Injectable()
 export class AppService {
-  constructor(private http: HttpClient, private snackBar: MatSnackBar) {}
+  private postUserQueue = new Subject<PostUserQueue>();
+  public postUserQueue$: Observable<number>;
 
-  postUser(user: User): Observable<number> {
+  constructor(private http: HttpClient, private snackBar: MatSnackBar) {
+    this.postUserQueue$ = this.postUserQueue.pipe(
+      concatMap((queue) => this.postUser(queue.user, queue.isAutoSave))
+    );
+  }
+
+  addToPostUserQueue(queue: PostUserQueue) {
+    console.log('Add To PostUserQueue: ', queue);
+    this.postUserQueue.next(queue);
+  }
+
+  postUser(user: User, isAutoSave: boolean): Observable<number> {
     console.log('Post user: ', user);
     return this.http.post('/user', user, { observe: 'response' }).pipe(
       map((res) => res.status),
@@ -25,7 +37,13 @@ export class AppService {
       tap((status) => {
         const msg: string =
           status === 200 ? 'Successfully added user.' : 'Failed to add user.';
-        this.snackBar.open(msg);
+
+        if (isAutoSave) {
+          console.log(`Auto save: ${msg}`);
+        } else {
+          console.log(`On submit: ${msg}`);
+          this.snackBar.open(msg);
+        }
       })
     );
   }

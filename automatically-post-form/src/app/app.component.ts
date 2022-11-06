@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
-import { AppService, User } from './app.service';
+import { AppService, PostUserQueue, User } from './app.service';
 
 @Component({
   selector: 'app-root',
@@ -19,6 +19,10 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.appService.postUserQueue$.subscribe((result) =>
+      console.log('Queue result: ', result)
+    );
+
     this.enableAutoSave();
   }
 
@@ -30,13 +34,13 @@ export class AppComponent implements OnInit, OnDestroy {
     this.formGroup.markAsPristine();
     this.formGroup.markAsUntouched();
 
-    this.appService
-      .postUser({
+    const queue: PostUserQueue = {
+      user: {
         name: this.formGroup.value.name || '',
-      })
-      .subscribe((status) => {
-        console.log('post result:', status);
-      });
+      },
+      isAutoSave: false,
+    };
+    this.appService.addToPostUserQueue(queue);
   }
 
   private isEnabledAutoSave(): boolean {
@@ -51,13 +55,13 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.autoSave = setInterval(() => {
       if (this.formGroup.touched && this.formGroup.dirty) {
-        this.appService
-          .postUser({
+        const queue: PostUserQueue = {
+          user: {
             name: this.formGroup.value.name || '',
-          })
-          .subscribe((status) => {
-            console.log('post result:', status);
-          });
+          },
+          isAutoSave: true,
+        };
+        this.appService.addToPostUserQueue(queue);
       }
     }, this.AUTO_SAVE_INTERVAL);
   }
